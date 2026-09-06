@@ -26,6 +26,7 @@ type FlywheelProjectParam struct {
 type FlywheelService interface {
 	Overview(ctx context.Context, projectID string) (flywheel.DashboardOverview, error)
 	RunTriageDemo(ctx context.Context, projectID string) ([]flywheel.CycleReport, error)
+	StartLiveDemo(projectID string) flywheel.LiveStatus
 }
 
 // FlywheelController serves the loopback Flywheel API. A nil Svc answers 501 so
@@ -38,6 +39,7 @@ type FlywheelController struct {
 func (c *FlywheelController) Register(r chi.Router) {
 	r.Get("/projects/{projectId}/flywheel/overview", c.overview)
 	r.Post("/projects/{projectId}/flywheel/demo", c.runDemo)
+	r.Post("/projects/{projectId}/flywheel/live-demo", c.runLiveDemo)
 }
 
 // overview returns the full Learning-tab read model for a project.
@@ -67,6 +69,24 @@ func (c *FlywheelController) runDemo(w http.ResponseWriter, r *http.Request) {
 		envelope.WriteError(w, r, err)
 		return
 	}
+	ov, err := c.Svc.Overview(r.Context(), projectID)
+	if err != nil {
+		envelope.WriteError(w, r, err)
+		return
+	}
+	envelope.WriteJSON(w, http.StatusOK, FlywheelOverviewResponse(ov))
+}
+
+// runLiveDemo starts a real Claude Code agent learning run in the background and
+// returns the current dashboard immediately (the UI polls Overview for
+// progress). Live agent runs are long, so this never blocks the request.
+func (c *FlywheelController) runLiveDemo(w http.ResponseWriter, r *http.Request) {
+	if c.Svc == nil {
+		apispec.NotImplemented(w, r, "POST", "/api/v1/projects/{projectId}/flywheel/live-demo")
+		return
+	}
+	projectID := chi.URLParam(r, "projectId")
+	c.Svc.StartLiveDemo(projectID)
 	ov, err := c.Svc.Overview(r.Context(), projectID)
 	if err != nil {
 		envelope.WriteError(w, r, err)

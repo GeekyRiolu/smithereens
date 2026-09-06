@@ -10,6 +10,7 @@ import {
 	flywheelOverviewQueryKey,
 	flywheelOverviewQueryOptions,
 	runFlywheelDemo,
+	runFlywheelLiveDemo,
 } from "../hooks/useFlywheelQuery";
 import { cn } from "../lib/utils";
 import { Badge } from "./ui/badge";
@@ -28,7 +29,15 @@ function tokens(n: number): string {
 	return `${Math.round(n)}`;
 }
 
-type EpisodeOutcome = { success?: boolean; tokens?: number; agent?: string; team?: string; priority?: number };
+type EpisodeOutcome = {
+	success?: boolean;
+	tokens?: number;
+	agent?: string;
+	team?: string;
+	priority?: number;
+	toolCalls?: number;
+	costUsd?: number;
+};
 
 function parseOutcome(ep: FlywheelEpisode): EpisodeOutcome {
 	try {
@@ -131,6 +140,12 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 			queryClient.setQueryData(flywheelOverviewQueryKey(projectId), data);
 		},
 	});
+	const liveDemo = useMutation({
+		mutationFn: () => runFlywheelLiveDemo(projectId),
+		onSuccess: (data: FlywheelOverview) => {
+			queryClient.setQueryData(flywheelOverviewQueryKey(projectId), data);
+		},
+	});
 
 	const overview = query.data;
 	const cycles = overview?.cycles ?? [];
@@ -157,10 +172,28 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 		);
 	}
 
+	const liveAvailable = overview?.liveAvailable ?? false;
+	const liveRunning = overview?.liveRunning ?? false;
+
 	const runButton = (
-		<Button onClick={() => demo.mutate()} disabled={demo.isPending}>
+		<Button onClick={() => demo.mutate()} disabled={demo.isPending || liveRunning}>
 			<Play className="size-4" />
 			{demo.isPending ? "Running…" : cycles.length > 0 ? "Run another cycle" : "Run learning demo"}
+		</Button>
+	);
+	const liveButton = (
+		<Button
+			variant="secondary"
+			onClick={() => liveDemo.mutate()}
+			disabled={!liveAvailable || liveRunning || liveDemo.isPending}
+			title={
+				liveAvailable
+					? "Run the real Claude Code agent on a few tasks (uses your Claude auth)"
+					: "Requires the claude CLI (Claude Code) installed and authenticated"
+			}
+		>
+			<Sparkles className="size-4" />
+			{liveRunning ? "Live run in progress…" : "Run LIVE cycle (real Claude)"}
 		</Button>
 	);
 
@@ -178,7 +211,10 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 						</p>
 					</div>
 				</div>
-				{runButton}
+				<div className="flex flex-wrap items-center gap-2">
+					{runButton}
+					{liveButton}
+				</div>
 			</header>
 
 			{query.isError ? (
@@ -186,6 +222,22 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 					<CardContent className="p-4 text-destructive text-sm">
 						{(query.error as Error)?.message ?? "Failed to load the Flywheel dashboard."}
 					</CardContent>
+				</Card>
+			) : null}
+
+			{liveRunning ? (
+				<Card>
+					<CardContent className="flex items-center gap-3 p-4 text-sm">
+						<span className="size-2 animate-pulse rounded-full bg-success" />
+						<span>
+							Live run in progress — {overview?.liveStep || "working"}… records update automatically.
+						</span>
+					</CardContent>
+				</Card>
+			) : null}
+			{overview?.liveError ? (
+				<Card>
+					<CardContent className="p-4 text-destructive text-sm">Live run error: {overview.liveError}</CardContent>
 				</Card>
 			) : null}
 
@@ -372,7 +424,9 @@ function EpisodesTable({ episodes }: { episodes: FlywheelEpisode[] }) {
 					<TableHead>Task</TableHead>
 					<TableHead>Agent</TableHead>
 					<TableHead>Outcome</TableHead>
+					<TableHead className="text-right">Tools</TableHead>
 					<TableHead className="text-right">Tokens</TableHead>
+					<TableHead className="text-right">Cost</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody>
@@ -390,7 +444,9 @@ function EpisodesTable({ episodes }: { episodes: FlywheelEpisode[] }) {
 									{o.team ? ` · ${o.team}/P${o.priority}` : ""}
 								</span>
 							</TableCell>
+							<TableCell className="text-right tabular-nums">{o.toolCalls ?? "—"}</TableCell>
 							<TableCell className="text-right tabular-nums">{o.tokens ? tokens(o.tokens) : "—"}</TableCell>
+							<TableCell className="text-right tabular-nums">{o.costUsd ? `$${o.costUsd.toFixed(3)}` : "—"}</TableCell>
 						</TableRow>
 					);
 				})}

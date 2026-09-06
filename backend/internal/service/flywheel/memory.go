@@ -15,6 +15,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -49,11 +50,16 @@ type Store interface {
 type Service struct {
 	store Store
 	now   func() time.Time
+
+	// live tracks the async live-demo run per project (real Claude Code agent
+	// runs are long, so they run in the background and the UI polls Overview).
+	mu   sync.Mutex
+	live map[string]*liveRunState
 }
 
 // New constructs a memory service over the given store.
 func New(store Store) *Service {
-	return &Service{store: store, now: time.Now}
+	return &Service{store: store, now: time.Now, live: map[string]*liveRunState{}}
 }
 
 // RecordEpisode persists one completed run into the episodic substrate.

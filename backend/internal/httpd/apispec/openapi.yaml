@@ -2186,6 +2186,40 @@ paths:
         dashboard
       tags:
       - flywheel
+  /api/v1/projects/{projectId}/flywheel/live-demo:
+    post:
+      operationId: runFlywheelLiveDemo
+      parameters:
+      - description: Project id the Flywheel data belongs to.
+        in: path
+        name: projectId
+        required: true
+        schema:
+          description: Project id the Flywheel data belongs to.
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlywheelOverview'
+          description: OK
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Implemented
+      summary: Start a live learning run with the real Claude Code agent (async) and
+        return the current dashboard
+      tags:
+      - flywheel
   /api/v1/projects/{projectId}/flywheel/overview:
     get:
       operationId: getFlywheelOverview
@@ -9326,6 +9360,14 @@ components:
           items:
             $ref: '#/components/schemas/FlywheelCyclePoint'
           type: array
+        liveAvailable:
+          type: boolean
+        liveError:
+          type: string
+        liveRunning:
+          type: boolean
+        liveStep:
+          type: string
         memory:
           $ref: '#/components/schemas/FlywheelMemorySummary'
         projectId:
@@ -9344,6 +9386,8 @@ components:
       - memory
       - recentEpisodes
       - recentEvalRuns
+      - liveAvailable
+      - liveRunning
       type: object
     GitPreparationEvent:
       properties:

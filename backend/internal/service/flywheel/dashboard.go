@@ -21,6 +21,12 @@ type DashboardOverview struct {
 	Memory         MemorySummary            `json:"memory"`
 	RecentEpisodes []domain.FlywheelEpisode `json:"recentEpisodes"`
 	RecentEvalRuns []domain.FlywheelEvalRun `json:"recentEvalRuns"`
+	// LiveAvailable is true when the real `claude` CLI is present, so the live
+	// demo can run. LiveRunning/LiveStep/LiveError report an in-flight live run.
+	LiveAvailable bool   `json:"liveAvailable"`
+	LiveRunning   bool   `json:"liveRunning"`
+	LiveStep      string `json:"liveStep,omitempty"`
+	LiveError     string `json:"liveError,omitempty"`
 }
 
 // CyclePoint is one point on the dual curve: a consolidation cycle plus its
@@ -103,9 +109,12 @@ func (s *Service) Overview(ctx context.Context, projectID string) (DashboardOver
 		return DashboardOverview{}, fmt.Errorf("overview eval runs: %w", err)
 	}
 
+	live := s.liveStatus(projectID)
 	return DashboardOverview{
 		ProjectID: projectID, Cycles: points, Memory: mem,
 		RecentEpisodes: episodes, RecentEvalRuns: runs,
+		LiveAvailable: LiveAvailable(), LiveRunning: live.Running,
+		LiveStep: live.Step, LiveError: live.Error,
 	}, nil
 }
 

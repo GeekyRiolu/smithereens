@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/daemon"
+	"github.com/aoagents/agent-orchestrator/backend/internal/flywheeltools"
 	aoprocess "github.com/aoagents/agent-orchestrator/backend/internal/process"
 	"github.com/aoagents/agent-orchestrator/backend/internal/processalive"
 	"github.com/aoagents/agent-orchestrator/backend/internal/telemetrymeta"
@@ -198,6 +199,7 @@ func NewRootCommand(deps Deps) *cobra.Command {
 	})
 
 	root.AddCommand(newDaemonCommand())
+	root.AddCommand(newFlywheelToolsCommand())
 	root.AddCommand(newStartCommand(ctx))
 	root.AddCommand(newStopCommand(ctx))
 	root.AddCommand(newStatusCommand(ctx))
@@ -340,6 +342,18 @@ func newDaemonCommand() *cobra.Command {
 		Args:   noArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return daemon.Run()
+		},
+	}
+}
+
+func newFlywheelToolsCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:    "flywheel-tools",
+		Short:  "Run the Flywheel mock third-party tools as an MCP stdio server",
+		Hidden: true,
+		Args:   noArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return flywheeltools.Serve(cmd.InOrStdin(), cmd.OutOrStdout())
 		},
 	}
 }

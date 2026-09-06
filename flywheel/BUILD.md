@@ -31,7 +31,16 @@ Toolchain: Go 1.26.5 (via `mise`), Node 26.
 | **C. Learning loop** | executor/grader/reflector interfaces, eval harness, **eval-gated promotion**, cycles; simulated triage domain + `RunTriageDemo`; injection composer | ✅ done |
 | **D. API** | loopback `GET .../flywheel/overview` + `POST .../flywheel/demo`; controller/apispec/daemon wiring; regenerated openapi.yaml + schema.ts | ✅ done |
 | **E. Learning tab** | renderer `LearningDashboard` (dual curve via inline SVG, memory timeline, ablation, cycles + episodes tables), `useFlywheelQuery` hook, `/projects/$projectId/learning` route, sidebar nav entry | ✅ done |
-| **F. Wiring + demo** | daemon wiring done (service injected); demo runs via the tab's "Run learning cycle" button. Remaining: executor = live AO session (mock tools as local MCP) | ⏳ live-session executor |
+| **F. Live agent executor** | `LiveExecutor` drives the **real authed `claude` CLI** (headless `-p`) against mock third-party tools served over **MCP** by `ao flywheel-tools`, with learned memory injected via `--append-system-prompt-file`. Async `POST .../flywheel/live-demo` runs cold+warm real episodes; the tab has a **"Run LIVE cycle (real Claude)"** button that polls progress. | ✅ done |
+
+### Phase F verified live (real daemon + real agent)
+
+`POST /flywheel/live-demo` on a running daemon spawned **6 real Claude Code episodes**
+(3 cold, 3 warm). Reflection mined rules from them; the eval gate promoted 5, quarantined
+1. The **cold** agent (no memory) routed enterprise dup-charge to Billing/**P2 (wrong)**;
+the **warm** agent, with the learned rule injected, routed it to Billing/**P1 (correct)** —
+real accuracy improvement from memory. No `ANTHROPIC_API_KEY` needed (uses Claude Code's
+own auth); `AO_FLYWHEEL_MODEL` picks the model, `AO_FLYWHEEL_CLAUDE_BIN` overrides the CLI.
 
 ### Frontend verified
 

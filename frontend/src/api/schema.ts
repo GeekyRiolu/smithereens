@@ -929,6 +929,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/flywheel/live-demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a live learning run with the real Claude Code agent (async) and return the current dashboard */
+        post: operations["runFlywheelLiveDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{projectId}/flywheel/overview": {
         parameters: {
             query?: never;
@@ -3324,6 +3341,10 @@ export interface components {
         };
         FlywheelOverview: {
             cycles: components["schemas"]["FlywheelCyclePoint"][];
+            liveAvailable: boolean;
+            liveError?: string;
+            liveRunning: boolean;
+            liveStep?: string;
             memory: components["schemas"]["FlywheelMemorySummary"];
             projectId: string;
             recentEpisodes: components["schemas"]["FlywheelEpisode"][];
@@ -7279,6 +7300,47 @@ export interface operations {
         };
     };
     runFlywheelDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id the Flywheel data belongs to. */
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlywheelOverview"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    runFlywheelLiveDemo: {
         parameters: {
             query?: never;
             header?: never;

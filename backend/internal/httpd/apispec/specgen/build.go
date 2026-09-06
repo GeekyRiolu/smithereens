@@ -586,6 +586,16 @@ func flywheelOperations() []operation {
 				{http.StatusNotImplemented, envelope.APIError{}},
 			},
 		},
+		{
+			method: http.MethodPost, path: "/api/v1/projects/{projectId}/flywheel/live-demo", id: "runFlywheelLiveDemo", tag: "flywheel",
+			summary:    "Start a live learning run with the real Claude Code agent (async) and return the current dashboard",
+			pathParams: []any{controllers.FlywheelProjectParam{}},
+			resps: []respUnit{
+				{http.StatusOK, controllers.FlywheelOverviewResponse{}},
+				{http.StatusInternalServerError, envelope.APIError{}},
+				{http.StatusNotImplemented, envelope.APIError{}},
+			},
+		},
 	}
 }
 

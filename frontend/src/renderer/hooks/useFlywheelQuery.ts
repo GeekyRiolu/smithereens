@@ -24,7 +24,22 @@ export function flywheelOverviewQueryOptions(projectId: string) {
 			return result.data as FlywheelOverview;
 		},
 		enabled: projectId !== "",
+		// While a live agent run is in flight, poll so new episodes/cycles appear.
+		refetchInterval: (query) => (query.state.data?.liveRunning ? 2500 : false),
 	});
+}
+
+// runFlywheelLiveDemo starts a live learning run with the REAL Claude Code agent
+// (async on the daemon); the returned overview has liveRunning=true and the UI
+// polls until it completes.
+export async function runFlywheelLiveDemo(projectId: string): Promise<FlywheelOverview> {
+	const result = await apiClient.POST("/api/v1/projects/{projectId}/flywheel/live-demo", {
+		params: { path: { projectId } },
+	});
+	if (result.error || !result.data) {
+		throw new Error(apiErrorMessage(result.error, "Could not start the live Flywheel run."));
+	}
+	return result.data as FlywheelOverview;
 }
 
 // runFlywheelDemo runs a full learning demo (cold baseline + consolidation cycles

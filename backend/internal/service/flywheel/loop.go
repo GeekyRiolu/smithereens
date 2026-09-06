@@ -32,6 +32,7 @@ type Trajectory struct {
 	ToolCalls   int
 	ToolErrors  int
 	LatencyMS   int
+	CostUSD     float64
 }
 
 // Executor runs a task using the supplied memory (the learned context). Only the
@@ -297,5 +298,8 @@ func outcomeJSON(t Trajectory, success bool, agent string) string {
 	base["toolErrors"] = t.ToolErrors
 	base["latencyMs"] = t.LatencyMS
 	base["agent"] = agent
+	if t.CostUSD > 0 {
+		base["costUsd"] = t.CostUSD
+	}
 	return mustJSON(base)
 }
