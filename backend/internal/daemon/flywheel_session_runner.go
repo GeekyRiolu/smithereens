@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -32,7 +33,10 @@ func (r *flywheelSessionRunner) SpawnWorker(ctx context.Context, in flywheel.Wor
 		Harness:     domain.HarnessClaudeCode,
 		Prompt:      in.Prompt,
 		DisplayName: in.AgentLabel,
-		AgentConfig: ports.AgentConfig{Permissions: domain.PermissionModeBypassPermissions},
+		AgentConfig: ports.AgentConfig{
+			Model:       os.Getenv("AO_FLYWHEEL_MODEL"), // empty = project/agent default
+			Permissions: domain.PermissionModeBypassPermissions,
+		},
 	})
 	if err != nil {
 		return flywheel.WorkerHandle{}, fmt.Errorf("spawn flywheel worker: %w", err)
