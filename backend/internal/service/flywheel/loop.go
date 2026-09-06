@@ -18,6 +18,7 @@ import (
 // Task is one unit of work handed to the executor.
 type Task struct {
 	ID        string
+	ProjectID string
 	TaskType  string
 	InputJSON string
 }
@@ -87,7 +88,7 @@ func (s *Service) EvaluateSuite(ctx context.Context, projectID string, memory []
 	}
 	var m EvalMetrics
 	for _, c := range cases {
-		traj, err := exec.Run(ctx, Task{ID: c.ID, TaskType: c.TaskType, InputJSON: c.InputJSON}, memory)
+		traj, err := exec.Run(ctx, Task{ID: c.ID, ProjectID: projectID, TaskType: c.TaskType, InputJSON: c.InputJSON}, memory)
 		if err != nil {
 			return EvalMetrics{}, fmt.Errorf("eval case %s: %w", c.ID, err)
 		}
@@ -119,6 +120,7 @@ func (s *Service) EvaluateSuite(ctx context.Context, projectID string, memory []
 func (s *Service) RunBatch(ctx context.Context, projectID, agent string, tasks []Task, exec Executor, grader Grader, feedback func(Task) string) ([]domain.FlywheelEpisode, error) {
 	out := make([]domain.FlywheelEpisode, 0, len(tasks))
 	for _, task := range tasks {
+		task.ProjectID = projectID
 		memory, err := s.Retrieve(ctx, projectID, task.TaskType, 0)
 		if err != nil {
 			return nil, fmt.Errorf("retrieve for %s: %w", task.ID, err)
