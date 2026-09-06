@@ -58,13 +58,13 @@ func (s *Service) setLiveStep(projectID, step string) {
 	}
 }
 
-// StartLiveDemo begins the live demo for a project in the background (idempotent
-// while running). It returns the current status; an unavailable claude CLI is
-// reported as an error status without starting a run.
-func (s *Service) StartLiveDemo(projectID string) LiveStatus {
-	if !LiveAvailable() {
-		return LiveStatus{Error: "the `claude` CLI was not found on this machine; install/authenticate Claude Code to run the live demo"}
-	}
+// SessionAvailable reports whether the worker-session executor is wired (a
+// SessionRunner over AO's session service), so the UI can enable that button.
+func (s *Service) SessionAvailable() bool { return s.sessionRunnerRef() != nil }
+
+// startAsync runs one of the demo variants in the background (idempotent while a
+// run is in flight for the project) and tracks progress for Overview to surface.
+func (s *Service) startAsync(projectID string, run func(ctx context.Context, projectID string, setStep func(string)) ([]CycleReport, error)) LiveStatus {
 	s.mu.Lock()
 	if st := s.live[projectID]; st != nil && st.running {
 		defer s.mu.Unlock()
@@ -75,9 +75,9 @@ func (s *Service) StartLiveDemo(projectID string) LiveStatus {
 	s.mu.Unlock()
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 		defer cancel()
-		_, err := s.runLive(ctx, projectID, func(step string) { s.setLiveStep(projectID, step) })
+		_, err := run(ctx, projectID, func(step string) { s.setLiveStep(projectID, step) })
 		s.mu.Lock()
 		st.running = false
 		st.step = "done"
@@ -89,6 +89,24 @@ func (s *Service) StartLiveDemo(projectID string) LiveStatus {
 	}()
 
 	return LiveStatus{Running: true, Step: "starting", StartedAt: ptrTime(st.startedAt)}
+}
+
+// StartLiveDemo begins the live demo (bare `claude -p` executor) in the
+// background. An unavailable claude CLI is reported as an error status.
+func (s *Service) StartLiveDemo(projectID string) LiveStatus {
+	if !LiveAvailable() {
+		return LiveStatus{Error: "the `claude` CLI was not found on this machine; install/authenticate Claude Code to run the live demo"}
+	}
+	return s.startAsync(projectID, s.runLive)
+}
+
+// StartSessionDemo begins the worker-session demo (real AO worker sessions) in
+// the background. An unwired session runner is reported as an error status.
+func (s *Service) StartSessionDemo(projectID string) LiveStatus {
+	if s.sessionRunnerRef() == nil {
+		return LiveStatus{Error: "worker-session executor is not wired on this daemon"}
+	}
+	return s.startAsync(projectID, s.runSessions)
 }
 
 func ptrTime(t time.Time) *time.Time {
@@ -120,9 +138,25 @@ func (s *Service) runLive(ctx context.Context, projectID string, setStep func(st
 	if !ok {
 		return nil, fmt.Errorf("live executor unavailable: the `claude` CLI was not found")
 	}
+	return s.runBatches(ctx, projectID, live, "claude-code · cold", "claude-code · warm", setStep)
+}
+
+func (s *Service) runSessions(ctx context.Context, projectID string, setStep func(string)) ([]CycleReport, error) {
+	runner := s.sessionRunnerRef()
+	if runner == nil {
+		return nil, fmt.Errorf("worker-session executor is not wired")
+	}
+	return s.runBatches(ctx, projectID, NewWorkerSessionExecutor(runner), "worker · cold", "worker · warm", setStep)
+}
+
+// runBatches is the shared demo shape: a cold baseline, a cold real batch,
+// consolidation (eval-gated by the fast deterministic evaluator), a warm real
+// batch with promoted memory injected, and a warm consolidation. batchExec runs
+// the (real) episodes; cold/warm labels attribute them.
+func (s *Service) runBatches(ctx context.Context, projectID string, batchExec Executor, coldLabel, warmLabel string, setStep func(string)) ([]CycleReport, error) {
 	sim := SimTriageExecutor{}                  // cheap, deterministic evaluator for the gate
 	grader := TriageGrader{}                    // grades outcomes vs reference (state check)
-	reflector := TriageReflector{MinSupport: 1} // few live episodes → low support bar
+	reflector := TriageReflector{MinSupport: 1} // few real episodes → low support bar
 
 	if err := s.SeedTriageEvalSuite(ctx, projectID); err != nil {
 		return nil, err
@@ -152,9 +186,9 @@ func (s *Service) runLive(ctx context.Context, projectID string, setStep func(st
 
 	tasks := liveBatch()
 
-	// Cold LIVE batch — the real agent, no learned memory yet.
-	setStep(fmt.Sprintf("running %d cold episodes with the real Claude Code agent", len(tasks)))
-	if _, err := s.RunBatch(ctx, projectID, "claude-code · cold", tasks, live, grader, triageFeedback); err != nil {
+	// Cold batch — the real agent, no learned memory yet.
+	setStep(fmt.Sprintf("running %d cold episodes (%s)", len(tasks), coldLabel))
+	if _, err := s.RunBatch(ctx, projectID, coldLabel, tasks, batchExec, grader, triageFeedback); err != nil {
 		return nil, err
 	}
 
@@ -166,9 +200,9 @@ func (s *Service) runLive(ctx context.Context, projectID string, setStep func(st
 	}
 	reports = append(reports, rep)
 
-	// Warm LIVE batch — the same tasks, now with promoted memory injected.
-	setStep(fmt.Sprintf("running %d warm episodes (memory injected)", len(tasks)))
-	if _, err := s.RunBatch(ctx, projectID, "claude-code · warm", tasks, live, grader, triageFeedback); err != nil {
+	// Warm batch — the same tasks, now with promoted memory injected.
+	setStep(fmt.Sprintf("running %d warm episodes (%s, memory injected)", len(tasks), warmLabel))
+	if _, err := s.RunBatch(ctx, projectID, warmLabel, tasks, batchExec, grader, triageFeedback); err != nil {
 		return nil, err
 	}
 	setStep("recording warm cycle")

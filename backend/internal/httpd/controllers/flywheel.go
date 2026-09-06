@@ -27,6 +27,7 @@ type FlywheelService interface {
 	Overview(ctx context.Context, projectID string) (flywheel.DashboardOverview, error)
 	RunTriageDemo(ctx context.Context, projectID string) ([]flywheel.CycleReport, error)
 	StartLiveDemo(projectID string) flywheel.LiveStatus
+	StartSessionDemo(projectID string) flywheel.LiveStatus
 }
 
 // FlywheelController serves the loopback Flywheel API. A nil Svc answers 501 so
@@ -40,6 +41,7 @@ func (c *FlywheelController) Register(r chi.Router) {
 	r.Get("/projects/{projectId}/flywheel/overview", c.overview)
 	r.Post("/projects/{projectId}/flywheel/demo", c.runDemo)
 	r.Post("/projects/{projectId}/flywheel/live-demo", c.runLiveDemo)
+	r.Post("/projects/{projectId}/flywheel/session-demo", c.runSessionDemo)
 }
 
 // overview returns the full Learning-tab read model for a project.
@@ -87,6 +89,24 @@ func (c *FlywheelController) runLiveDemo(w http.ResponseWriter, r *http.Request)
 	}
 	projectID := chi.URLParam(r, "projectId")
 	c.Svc.StartLiveDemo(projectID)
+	ov, err := c.Svc.Overview(r.Context(), projectID)
+	if err != nil {
+		envelope.WriteError(w, r, err)
+		return
+	}
+	envelope.WriteJSON(w, http.StatusOK, FlywheelOverviewResponse(ov))
+}
+
+// runSessionDemo starts a learning run executed as REAL AO worker sessions
+// (Option 2 — visible in the Kanban) in the background, and returns the current
+// dashboard immediately (the UI polls Overview for progress).
+func (c *FlywheelController) runSessionDemo(w http.ResponseWriter, r *http.Request) {
+	if c.Svc == nil {
+		apispec.NotImplemented(w, r, "POST", "/api/v1/projects/{projectId}/flywheel/session-demo")
+		return
+	}
+	projectID := chi.URLParam(r, "projectId")
+	c.Svc.StartSessionDemo(projectID)
 	ov, err := c.Svc.Overview(r.Context(), projectID)
 	if err != nil {
 		envelope.WriteError(w, r, err)

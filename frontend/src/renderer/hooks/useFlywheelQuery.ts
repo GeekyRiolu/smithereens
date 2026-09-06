@@ -42,6 +42,18 @@ export async function runFlywheelLiveDemo(projectId: string): Promise<FlywheelOv
 	return result.data as FlywheelOverview;
 }
 
+// runFlywheelSessionDemo starts a learning run executed as REAL AO worker
+// sessions (Option 2 — visible on the Kanban); async, polled like the live run.
+export async function runFlywheelSessionDemo(projectId: string): Promise<FlywheelOverview> {
+	const result = await apiClient.POST("/api/v1/projects/{projectId}/flywheel/session-demo", {
+		params: { path: { projectId } },
+	});
+	if (result.error || !result.data) {
+		throw new Error(apiErrorMessage(result.error, "Could not start the worker-session run."));
+	}
+	return result.data as FlywheelOverview;
+}
+
 // runFlywheelDemo runs a full learning demo (cold baseline + consolidation cycles
 // across agents) for the project and returns the updated dashboard.
 export async function runFlywheelDemo(projectId: string): Promise<FlywheelOverview> {

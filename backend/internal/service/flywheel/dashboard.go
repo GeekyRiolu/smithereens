@@ -27,6 +27,8 @@ type DashboardOverview struct {
 	LiveRunning   bool   `json:"liveRunning"`
 	LiveStep      string `json:"liveStep,omitempty"`
 	LiveError     string `json:"liveError,omitempty"`
+	// SessionAvailable is true when the worker-session executor is wired (Option 2).
+	SessionAvailable bool `json:"sessionAvailable"`
 }
 
 // CyclePoint is one point on the dual curve: a consolidation cycle plus its
@@ -115,6 +117,7 @@ func (s *Service) Overview(ctx context.Context, projectID string) (DashboardOver
 		RecentEpisodes: episodes, RecentEvalRuns: runs,
 		LiveAvailable: LiveAvailable(), LiveRunning: live.Running,
 		LiveStep: live.Step, LiveError: live.Error,
+		SessionAvailable: s.SessionAvailable(),
 	}, nil
 }
 

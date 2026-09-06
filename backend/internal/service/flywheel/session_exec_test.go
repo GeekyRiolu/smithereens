@@ -5,17 +5,18 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
-// fakeRunner simulates AO's session service: it makes a worktree, provisions the
-// requested files, and (as if the agent ran) writes the decision file.
+// fakeRunner simulates AO's session service: it makes a worktree, records the
+// spawn prompt, and (as if the agent ran) writes the decision file.
 type fakeRunner struct {
 	decision triageRouting
-	files    map[string]string
+	prompt   string
 	killed   []string
 }
 
@@ -24,10 +25,7 @@ func (f *fakeRunner) SpawnWorker(_ context.Context, in WorkerSpawn) (WorkerHandl
 	if err != nil {
 		return WorkerHandle{}, err
 	}
-	f.files = in.Files
-	for name, content := range in.Files {
-		_ = os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600)
-	}
+	f.prompt = in.Prompt
 	_ = os.WriteFile(filepath.Join(dir, flywheelDecisionFile), []byte(mustJSON(f.decision)), 0o600)
 	return WorkerHandle{SessionID: "sess-fake", WorktreePath: dir}, nil
 }
@@ -37,7 +35,7 @@ func (f *fakeRunner) KillWorker(_ context.Context, id string) error {
 	return nil
 }
 
-func TestWorkerSessionExecutorCollectsDecisionAndProvisionsTools(t *testing.T) {
+func TestWorkerSessionExecutorCollectsDecisionAndTidies(t *testing.T) {
 	f := &fakeRunner{decision: triageRouting{Team: "Billing", Priority: 1}}
 	exec := NewWorkerSessionExecutor(f)
 	exec.PollInterval = 10 * time.Millisecond
@@ -57,9 +55,9 @@ func TestWorkerSessionExecutorCollectsDecisionAndProvisionsTools(t *testing.T) {
 	if got != (triageRouting{Team: "Billing", Priority: 1}) {
 		t.Fatalf("expected collected routing Billing/1, got %+v", got)
 	}
-	// The mock MCP tools were provisioned into the worktree.
-	if _, ok := f.files[".mcp.json"]; !ok {
-		t.Fatalf("expected .mcp.json provisioned, got %v", f.files)
+	// The prompt instructs writing the decision file and carries the tier.
+	if !strings.Contains(f.prompt, flywheelDecisionFile) || !strings.Contains(f.prompt, "enterprise") {
+		t.Fatalf("prompt missing decision-file directive or tier:\n%s", f.prompt)
 	}
 	// The session was tidied up.
 	if len(f.killed) != 1 || f.killed[0] != "sess-fake" {
@@ -67,7 +65,7 @@ func TestWorkerSessionExecutorCollectsDecisionAndProvisionsTools(t *testing.T) {
 	}
 }
 
-func TestWorkerSessionExecutorInjectsMemory(t *testing.T) {
+func TestWorkerSessionExecutorEmbedsMemoryInPrompt(t *testing.T) {
 	f := &fakeRunner{decision: triageRouting{Team: "Billing", Priority: 1}}
 	exec := NewWorkerSessionExecutor(f)
 	exec.PollInterval = 10 * time.Millisecond
@@ -76,15 +74,14 @@ func TestWorkerSessionExecutorInjectsMemory(t *testing.T) {
 		Kind: domain.MemoryKnowledge, ScopeTask: triageTaskType,
 		Title: "Route enterprise dup_charge -> Billing/P1", Confidence: 0.9,
 	}}
-	_, err := exec.Run(context.Background(), Task{
+	if _, err := exec.Run(context.Background(), Task{
 		ProjectID: "fw", TaskType: triageTaskType,
 		InputJSON: mustJSON(triageInput{Tier: "enterprise", Keyword: "dup_charge"}),
-	}, mem)
-	if err != nil {
+	}, mem); err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	if _, ok := f.files["FLYWHEEL.md"]; !ok {
-		t.Fatalf("expected learned memory provisioned as FLYWHEEL.md, got %v", keysOf(f.files))
+	if !strings.Contains(f.prompt, "Route enterprise dup_charge -> Billing/P1") {
+		t.Fatalf("expected learned memory embedded in the prompt:\n%s", f.prompt)
 	}
 }
 
@@ -116,12 +113,4 @@ func TestWorkerSessionExecutorTimesOutAndTidies(t *testing.T) {
 	if len(r.killed) != 1 {
 		t.Fatalf("expected the session tidied even on timeout, got %v", r.killed)
 	}
-}
-
-func keysOf(m map[string]string) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	return out
 }

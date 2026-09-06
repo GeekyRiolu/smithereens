@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, FlaskConical, Play, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { Brain, FlaskConical, Play, Sparkles, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { useMemo } from "react";
 
 import {
@@ -11,6 +11,7 @@ import {
 	flywheelOverviewQueryOptions,
 	runFlywheelDemo,
 	runFlywheelLiveDemo,
+	runFlywheelSessionDemo,
 } from "../hooks/useFlywheelQuery";
 import { cn } from "../lib/utils";
 import { Badge } from "./ui/badge";
@@ -146,6 +147,12 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 			queryClient.setQueryData(flywheelOverviewQueryKey(projectId), data);
 		},
 	});
+	const sessionDemo = useMutation({
+		mutationFn: () => runFlywheelSessionDemo(projectId),
+		onSuccess: (data: FlywheelOverview) => {
+			queryClient.setQueryData(flywheelOverviewQueryKey(projectId), data);
+		},
+	});
 
 	const overview = query.data;
 	const cycles = overview?.cycles ?? [];
@@ -174,6 +181,7 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 
 	const liveAvailable = overview?.liveAvailable ?? false;
 	const liveRunning = overview?.liveRunning ?? false;
+	const sessionAvailable = overview?.sessionAvailable ?? false;
 
 	const runButton = (
 		<Button onClick={() => demo.mutate()} disabled={demo.isPending || liveRunning}>
@@ -196,6 +204,21 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 			{liveRunning ? "Live run in progress…" : "Run LIVE cycle (real Claude)"}
 		</Button>
 	);
+	const sessionButton = (
+		<Button
+			variant="outline"
+			onClick={() => sessionDemo.mutate()}
+			disabled={!sessionAvailable || liveRunning || sessionDemo.isPending}
+			title={
+				sessionAvailable
+					? "Run the cycle as real AO worker sessions — they appear on the Kanban and feed the learning"
+					: "The worker-session executor is not wired on this daemon"
+			}
+		>
+			<Users className="size-4" />
+			{liveRunning ? "Running…" : "Run as AO worker sessions"}
+		</Button>
+	);
 
 	return (
 		<div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
@@ -214,6 +237,7 @@ export function LearningDashboard({ projectId }: { projectId: string }) {
 				<div className="flex flex-wrap items-center gap-2">
 					{runButton}
 					{liveButton}
+					{sessionButton}
 				</div>
 			</header>
 

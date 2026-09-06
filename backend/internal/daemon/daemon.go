@@ -530,6 +530,7 @@ func Run() error {
 		Sessions: store,
 	})
 	flywheelSvc := flywheel.New(store)
+	flywheelSvc.SetSessionRunner(newFlywheelSessionRunner(sessionSvc))
 	if err := systemInstall.Recover(ctx); err != nil {
 		stop()
 		lcStack.Stop()

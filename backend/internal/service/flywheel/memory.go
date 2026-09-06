@@ -55,11 +55,30 @@ type Service struct {
 	// runs are long, so they run in the background and the UI polls Overview).
 	mu   sync.Mutex
 	live map[string]*liveRunState
+
+	// sessionRunner, when wired by the daemon, lets the worker-session demo spawn
+	// real AO worker sessions (Option 2). Nil when unavailable.
+	sessionRunner SessionRunner
 }
 
 // New constructs a memory service over the given store.
 func New(store Store) *Service {
 	return &Service{store: store, now: time.Now, live: map[string]*liveRunState{}}
+}
+
+// SetSessionRunner wires the real AO session service so the worker-session demo
+// can spawn worker agents. Called once during daemon construction.
+func (s *Service) SetSessionRunner(r SessionRunner) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionRunner = r
+}
+
+// sessionRunnerRef returns the wired runner (nil-safe read).
+func (s *Service) sessionRunnerRef() SessionRunner {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionRunner
 }
 
 // RecordEpisode persists one completed run into the episodic substrate.

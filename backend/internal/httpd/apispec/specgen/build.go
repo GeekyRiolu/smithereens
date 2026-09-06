@@ -596,6 +596,16 @@ func flywheelOperations() []operation {
 				{http.StatusNotImplemented, envelope.APIError{}},
 			},
 		},
+		{
+			method: http.MethodPost, path: "/api/v1/projects/{projectId}/flywheel/session-demo", id: "runFlywheelSessionDemo", tag: "flywheel",
+			summary:    "Start a learning run executed as real AO worker sessions (async) and return the current dashboard",
+			pathParams: []any{controllers.FlywheelProjectParam{}},
+			resps: []respUnit{
+				{http.StatusOK, controllers.FlywheelOverviewResponse{}},
+				{http.StatusInternalServerError, envelope.APIError{}},
+				{http.StatusNotImplemented, envelope.APIError{}},
+			},
+		},
 	}
 }
 

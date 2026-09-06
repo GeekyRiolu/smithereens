@@ -963,6 +963,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/flywheel/session-demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a learning run executed as real AO worker sessions (async) and return the current dashboard */
+        post: operations["runFlywheelSessionDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/clone": {
         parameters: {
             query?: never;
@@ -3349,6 +3366,7 @@ export interface components {
             projectId: string;
             recentEpisodes: components["schemas"]["FlywheelEpisode"][];
             recentEvalRuns: components["schemas"]["FlywheelEvalRun"][];
+            sessionAvailable: boolean;
         };
         GitPreparationEvent: {
             /** @enum {string} */
@@ -7382,6 +7400,47 @@ export interface operations {
         };
     };
     getFlywheelOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id the Flywheel data belongs to. */
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlywheelOverview"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    runFlywheelSessionDemo: {
         parameters: {
             query?: never;
             header?: never;

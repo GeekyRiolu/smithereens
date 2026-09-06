@@ -14,13 +14,19 @@ import (
 // Option 2: run tasks as REAL AO worker sessions (spawned like the orchestrator
 // spawns workers) so the runs appear on the Kanban and feed the learning loop.
 // See flywheel/ORCHESTRATION-BRIDGE.md.
+//
+// Managed sessions launch the agent inside Spawn (before we could write files
+// into the worktree), and managed claude-code has no --mcp-config, so the task
+// context + learned memory are embedded in the spawn PROMPT. The agent completes
+// the task and writes its decision to flywheel-decision.json in its worktree
+// (using its built-in Write tool); we poll for that file — a deterministic,
+// transcript-free way to read the outcome.
 
 // WorkerSpawn describes a worker session to launch for one Flywheel task.
 type WorkerSpawn struct {
 	ProjectID  string
-	AgentLabel string            // attribution recorded on the episode
-	Prompt     string            // initial task instruction for the agent
-	Files      map[string]string // worktree-relative files placed BEFORE the agent runs
+	AgentLabel string // attribution / display name
+	Prompt     string // the full task instruction (context + memory + write-file directive)
 }
 
 // WorkerHandle is a spawned worker session.
@@ -30,9 +36,9 @@ type WorkerHandle struct {
 }
 
 // SessionRunner spawns and tidies real AO worker sessions. The concrete
-// implementation (wired in the daemon) wraps AO's session service; a fake backs
-// the unit tests. Dependency inversion keeps service/flywheel free of a hard
-// dependency on service/session.
+// implementation (wired in the daemon over AO's session service) is separate; a
+// fake backs the unit tests. Dependency inversion keeps service/flywheel free of
+// a hard dependency on service/session.
 type SessionRunner interface {
 	SpawnWorker(ctx context.Context, in WorkerSpawn) (WorkerHandle, error)
 	KillWorker(ctx context.Context, sessionID string) error
@@ -40,25 +46,19 @@ type SessionRunner interface {
 
 const flywheelDecisionFile = "flywheel-decision.json"
 
-// WorkerSessionExecutor runs each task as a real AO worker session. It
-// provisions the mock MCP tools + learned memory into the worktree, then
-// collects the agent's decision from flywheel-decision.json — a deterministic,
-// transcript-free way to read the outcome.
+// WorkerSessionExecutor runs each task as a real AO worker session.
 type WorkerSessionExecutor struct {
 	Runner       SessionRunner
-	AOBin        string // this daemon's binary; launches `ao flywheel-tools`
 	Timeout      time.Duration
 	PollInterval time.Duration
 }
 
 // NewWorkerSessionExecutor builds a session executor over the given runner.
 func NewWorkerSessionExecutor(runner SessionRunner) *WorkerSessionExecutor {
-	aoBin, _ := os.Executable()
 	return &WorkerSessionExecutor{
 		Runner:       runner,
-		AOBin:        aoBin,
-		Timeout:      5 * time.Minute,
-		PollInterval: 2 * time.Second,
+		Timeout:      6 * time.Minute,
+		PollInterval: 3 * time.Second,
 	}
 }
 
@@ -66,21 +66,11 @@ func NewWorkerSessionExecutor(runner SessionRunner) *WorkerSessionExecutor {
 func (e *WorkerSessionExecutor) Run(ctx context.Context, task Task, memory []domain.FlywheelMemoryEntry) (Trajectory, error) {
 	var in triageInput
 	_ = json.Unmarshal([]byte(task.InputJSON), &in)
-	ref := refForTier(in.Tier)
-	msg := messageForKeyword(in.Keyword)
-
-	files := map[string]string{
-		".mcp.json": fmt.Sprintf(`{"mcpServers":{"triage":{"command":%q,"args":["flywheel-tools"]}}}`, e.AOBin),
-	}
-	if block := ComposeLearnedContext(memory); block != "" {
-		files["FLYWHEEL.md"] = block
-	}
 
 	handle, err := e.Runner.SpawnWorker(ctx, WorkerSpawn{
 		ProjectID:  task.ProjectID,
-		AgentLabel: "claude-code · worker",
-		Prompt:     e.sessionPrompt(ref, msg, in.Keyword),
-		Files:      files,
+		AgentLabel: "flywheel triage",
+		Prompt:     e.sessionPrompt(in, ComposeLearnedContext(memory)),
 	})
 	if err != nil {
 		return Trajectory{}, fmt.Errorf("session: spawn worker: %w", err)
@@ -101,8 +91,8 @@ func (e *WorkerSessionExecutor) Run(ctx context.Context, task Task, memory []dom
 	return Trajectory{
 		OutcomeJSON: mustJSON(routing),
 		TraceJSON:   mustJSON(trace),
-		// Token/cost from session usage is a follow-up; the learning signal here
-		// is routing correctness.
+		// Token/cost from the session's usage activities is a follow-up; the
+		// learning signal here is routing correctness.
 	}, nil
 }
 
@@ -111,7 +101,7 @@ func (e *WorkerSessionExecutor) awaitDecision(ctx context.Context, worktree stri
 	deadline := time.Now().Add(e.Timeout)
 	poll := e.PollInterval
 	if poll <= 0 {
-		poll = 2 * time.Second
+		poll = 3 * time.Second
 	}
 	for {
 		if data, err := os.ReadFile(path); err == nil {
@@ -130,15 +120,21 @@ func (e *WorkerSessionExecutor) awaitDecision(ctx context.Context, worktree stri
 	}
 }
 
-func (e *WorkerSessionExecutor) sessionPrompt(ref, msg, keyword string) string {
-	return fmt.Sprintf(
-		"You are a support-triage worker. A customer (reference: %s) wrote: %q (issue keyword: %s). "+
-			"Use the `triage` MCP tools to look up the customer's plan tier and analyze similar resolved "+
-			"tickets, and apply any guidance in FLYWHEEL.md if that file is present. Decide the correct team "+
-			"(Billing, Infra, or Support) and priority (1=highest, 2, or 3). "+
-			"Then WRITE your decision as a single JSON object to a file named %s in the current directory, "+
-			"exactly like {\"team\":\"Billing\",\"priority\":2}. That file is how your result is collected — "+
-			"you are done once it is written.",
-		ref, msg, keyword, flywheelDecisionFile,
+func (e *WorkerSessionExecutor) sessionPrompt(in triageInput, memoryBlock string) string {
+	prompt := fmt.Sprintf(
+		"You are a support-triage worker. A customer (reference %s, plan tier: %s) wrote: %q "+
+			"(issue keyword: %s). Decide the correct team (Billing, Infra, or Support) and priority "+
+			"(1=highest, 2, or 3).",
+		refForTier(in.Tier), in.Tier, messageForKeyword(in.Keyword), in.Keyword,
 	)
+	if memoryBlock != "" {
+		prompt += "\n\nLearned guidance from past runs (apply it where it fits):\n" + memoryBlock
+	}
+	prompt += fmt.Sprintf(
+		"\n\nWhen you have decided, WRITE your answer as a single JSON object to a file named %s in your "+
+			"current working directory, exactly like {\"team\":\"Billing\",\"priority\":2}. That file is how your "+
+			"result is collected — you are done once it is written.",
+		flywheelDecisionFile,
+	)
+	return prompt
 }
