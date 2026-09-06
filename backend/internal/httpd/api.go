@@ -61,6 +61,9 @@ type APIDeps struct {
 	Installer         controllers.Installer
 	AgentAuth         controllers.AgentAuthService
 	AgentSwitchPolicy AgentSwitchPolicyControl
+	// Flywheel is the self-improving agent runtime's read + demo surface. Nil
+	// answers 501, matching the other optional controllers.
+	Flywheel controllers.FlywheelService
 
 	// Presence tracks which mobile devices are currently running the app.
 	// Nil disables presence tracking (the roster then reports every device offline).
@@ -124,6 +127,7 @@ type API struct {
 	endpoints     *controllers.EndpointsController
 	systemInstall *controllers.SystemInstallController
 	agentAuth     *controllers.AgentAuthController
+	flywheel      *controllers.FlywheelController
 	events        *EventsController
 }
 
@@ -166,6 +170,7 @@ func NewAPI(cfg config.Config, deps APIDeps) *API {
 		endpoints:     &controllers.EndpointsController{Source: deps.Endpoints},
 		systemInstall: &controllers.SystemInstallController{Installer: deps.Installer},
 		agentAuth:     &controllers.AgentAuthController{Svc: deps.AgentAuth},
+		flywheel:      &controllers.FlywheelController{Svc: deps.Flywheel},
 		events:        &EventsController{Source: deps.CDC, Live: deps.Events},
 	}
 }
@@ -205,6 +210,7 @@ func (a *API) Register(root chi.Router) {
 			a.endpoints.Register(r)
 			a.systemInstall.Register(r)
 			a.agentAuth.Register(r)
+			a.flywheel.Register(r)
 			// Sibling REST controllers plug in here.
 		})
 		// Long-lived streams intentionally bypass the REST timeout middleware.

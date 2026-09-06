@@ -144,6 +144,14 @@ func schemaName(_ reflect.Type, defaultName string) string {
 // the drift test fails until the spec is regenerated, which flags the gap.
 var schemaNames = map[string]string{ //nolint:gosec // Public OpenAPI type names include reset-credit contracts; no credential value is stored here.
 	"ControllersSettingsResponse":                          "SettingsResponse",
+	"FlywheelDashboardOverview":                            "FlywheelOverview",
+	"FlywheelCyclePoint":                                   "FlywheelCyclePoint",
+	"FlywheelMemorySummary":                                "FlywheelMemorySummary",
+	"FlywheelEvalMetrics":                                  "FlywheelEvalMetrics",
+	"DomainFlywheelEpisode":                                "FlywheelEpisode",
+	"DomainFlywheelMemoryEntry":                            "FlywheelMemoryEntry",
+	"DomainFlywheelEvalRun":                                "FlywheelEvalRun",
+	"ControllersFlywheelProjectParam":                      "FlywheelProjectParam",
 	"ControllersDesktopWorkspaceLocationResponse":          "DesktopWorkspaceLocationResponse",
 	"ControllersUpdateSessionInterfaceRequest":             "UpdateSessionInterfaceRequest",
 	"ControllersConversationSnapshotResponse":              "ConversationSnapshotResponse",
@@ -550,7 +558,35 @@ func operations() []operation {
 	ops = append(ops, systemOperations()...)
 	ops = append(ops, identityOperations()...)
 	ops = append(ops, endpointsOperations()...)
+	ops = append(ops, flywheelOperations()...)
 	return ops
+}
+
+// flywheelOperations declares the self-improving runtime's project-scoped read
+// surface plus the demo trigger that populates it.
+func flywheelOperations() []operation {
+	return []operation{
+		{
+			method: http.MethodGet, path: "/api/v1/projects/{projectId}/flywheel/overview", id: "getFlywheelOverview", tag: "flywheel",
+			summary:    "Return the Flywheel learning dashboard (curve, memory, episodes) for a project",
+			pathParams: []any{controllers.FlywheelProjectParam{}},
+			resps: []respUnit{
+				{http.StatusOK, controllers.FlywheelOverviewResponse{}},
+				{http.StatusInternalServerError, envelope.APIError{}},
+				{http.StatusNotImplemented, envelope.APIError{}},
+			},
+		},
+		{
+			method: http.MethodPost, path: "/api/v1/projects/{projectId}/flywheel/demo", id: "runFlywheelDemo", tag: "flywheel",
+			summary:    "Run the Flywheel learning demo for a project and return the updated dashboard",
+			pathParams: []any{controllers.FlywheelProjectParam{}},
+			resps: []respUnit{
+				{http.StatusOK, controllers.FlywheelOverviewResponse{}},
+				{http.StatusInternalServerError, envelope.APIError{}},
+				{http.StatusNotImplemented, envelope.APIError{}},
+			},
+		},
+	}
 }
 
 // endpointsOperations declares the phone's endpoint refresh. Not under

@@ -912,6 +912,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/flywheel/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the Flywheel learning demo for a project and return the updated dashboard */
+        post: operations["runFlywheelDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{projectId}/flywheel/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return the Flywheel learning dashboard (curve, memory, episodes) for a project */
+        get: operations["getFlywheelOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/clone": {
         parameters: {
             query?: never;
@@ -3198,6 +3232,102 @@ export interface components {
             ok: boolean;
             session: components["schemas"]["ControllersSessionView"];
             sessionId: string;
+        };
+        FlywheelCyclePoint: {
+            /** Format: double */
+            ablationAccuracy: number;
+            candidates: number;
+            /** Format: date-time */
+            createdAt: string;
+            deprecated: number;
+            episodesSeen: number;
+            id: string;
+            metrics: components["schemas"]["FlywheelEvalMetrics"];
+            promoted: number;
+            quarantined: number;
+        };
+        FlywheelEpisode: {
+            /** Format: date-time */
+            createdAt: string;
+            feedbackJson: string;
+            id: string;
+            inputJson: string;
+            outcomeJson: string;
+            projectId: string;
+            /** Format: date-time */
+            reflectedAt?: null | string;
+            retrievedJson: string;
+            sessionId: string;
+            taskType: string;
+            traceJson: string;
+        };
+        FlywheelEvalMetrics: {
+            /** Format: double */
+            accuracy: number;
+            /** Format: double */
+            avgTokens: number;
+            /** Format: double */
+            avgToolCalls: number;
+            correct: number;
+            n: number;
+            /** Format: double */
+            toolErrorRate: number;
+        };
+        FlywheelEvalRun: {
+            ablation: string;
+            /** Format: date-time */
+            createdAt: string;
+            cycleId: string;
+            id: string;
+            memoryVersion: string;
+            metricsJson: string;
+            perCaseJson: string;
+            projectId: string;
+            stagedMemoryId: string;
+        };
+        FlywheelMemoryEntry: {
+            body: string;
+            /** Format: double */
+            confidence: number;
+            contradictionCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            evalRefsJson: string;
+            id: string;
+            kind: string;
+            /** Format: date-time */
+            lastConfirmedAt?: null | string;
+            /** Format: date-time */
+            lastUsedAt?: null | string;
+            projectId: string;
+            provenanceJson: string;
+            quarantineReason: string;
+            scopeTask: string;
+            scopeTool: string;
+            status: string;
+            structuredJson: string;
+            supportCount: number;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        FlywheelMemorySummary: {
+            active: number;
+            activeByKind: {
+                [key: string]: number;
+            } | null;
+            candidate: number;
+            deprecated: number;
+            entries: components["schemas"]["FlywheelMemoryEntry"][];
+            quarantined: number;
+        };
+        FlywheelOverview: {
+            cycles: components["schemas"]["FlywheelCyclePoint"][];
+            memory: components["schemas"]["FlywheelMemorySummary"];
+            projectId: string;
+            recentEpisodes: components["schemas"]["FlywheelEpisode"][];
+            recentEvalRuns: components["schemas"]["FlywheelEvalRun"][];
         };
         GitPreparationEvent: {
             /** @enum {string} */
@@ -7139,6 +7269,88 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    runFlywheelDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id the Flywheel data belongs to. */
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlywheelOverview"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    getFlywheelOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id the Flywheel data belongs to. */
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlywheelOverview"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };

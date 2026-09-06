@@ -6,7 +6,7 @@ import "time"
 // an episodic substrate (one row per completed run) distilled into four typed
 // long-term memories, plus the eval suite and consolidation-cycle audit that
 // gate what the agent is allowed to remember. See flywheel/ for the design and
-// migration 0127_flywheel.sql for the columns.
+// migration 0127_flywheel.sql for the columns. JSON tags shape the loopback API.
 
 // MemoryKind is the type of a long-term memory entry.
 type MemoryKind string
@@ -94,85 +94,85 @@ func (p EvalPolarity) Valid() bool {
 // from. The *JSON fields hold structured payloads the service layer interprets
 // (kept as raw JSON at the storage boundary).
 type FlywheelEpisode struct {
-	ID            string
-	ProjectID     string
-	SessionID     string
-	TaskType      string
-	InputJSON     string // task + context snapshot (redacted)
-	RetrievedJSON string // memory ids injected into this run
-	TraceJSON     string // tool calls: tool, args, result, ms, tokens, error
-	OutcomeJSON   string // grader scores, success, cost, tokens, tool_calls, wall_ms
-	FeedbackJSON  string // human corrections, if any
-	ReflectedAt   *time.Time
-	CreatedAt     time.Time
+	ID            string     `json:"id"`
+	ProjectID     string     `json:"projectId"`
+	SessionID     string     `json:"sessionId"`
+	TaskType      string     `json:"taskType"`
+	InputJSON     string     `json:"inputJson"`     // task + context snapshot (redacted)
+	RetrievedJSON string     `json:"retrievedJson"` // memory ids injected into this run
+	TraceJSON     string     `json:"traceJson"`     // tool calls: tool, args, result, ms, tokens, error
+	OutcomeJSON   string     `json:"outcomeJson"`   // grader scores, success, cost, tokens, tool_calls
+	FeedbackJSON  string     `json:"feedbackJson"`  // human corrections, if any
+	ReflectedAt   *time.Time `json:"reflectedAt,omitempty"`
+	CreatedAt     time.Time  `json:"createdAt"`
 }
 
 // FlywheelMemoryEntry is one long-term memory record. Confidence, support and
 // contradiction counts let bad lessons decay instead of accumulate; provenance
 // and eval refs make every applied lesson explainable.
 type FlywheelMemoryEntry struct {
-	ID                 string
-	ProjectID          string
-	Kind               MemoryKind
-	ScopeTask          string
-	ScopeTool          string
-	Title              string
-	Body               string
-	StructuredJSON     string
-	Confidence         float64
-	SupportCount       int
-	ContradictionCount int
-	Status             MemoryStatus
-	Version            int
-	ProvenanceJSON     string // source episode ids
-	EvalRefsJSON       string // eval case ids exercising this lesson
-	QuarantineReason   string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
-	LastUsedAt         *time.Time
-	LastConfirmedAt    *time.Time
+	ID                 string       `json:"id"`
+	ProjectID          string       `json:"projectId"`
+	Kind               MemoryKind   `json:"kind"`
+	ScopeTask          string       `json:"scopeTask"`
+	ScopeTool          string       `json:"scopeTool"`
+	Title              string       `json:"title"`
+	Body               string       `json:"body"`
+	StructuredJSON     string       `json:"structuredJson"`
+	Confidence         float64      `json:"confidence"`
+	SupportCount       int          `json:"supportCount"`
+	ContradictionCount int          `json:"contradictionCount"`
+	Status             MemoryStatus `json:"status"`
+	Version            int          `json:"version"`
+	ProvenanceJSON     string       `json:"provenanceJson"` // source episode ids
+	EvalRefsJSON       string       `json:"evalRefsJson"`   // eval case ids exercising this lesson
+	QuarantineReason   string       `json:"quarantineReason"`
+	CreatedAt          time.Time    `json:"createdAt"`
+	UpdatedAt          time.Time    `json:"updatedAt"`
+	LastUsedAt         *time.Time   `json:"lastUsedAt,omitempty"`
+	LastConfirmedAt    *time.Time   `json:"lastConfirmedAt,omitempty"`
 }
 
 // FlywheelEvalCase is one frozen test in the suite: inputs plus ordered graders.
 type FlywheelEvalCase struct {
-	ID              string
-	ProjectID       string
-	TaskType        string
-	Kind            EvalKind
-	Polarity        EvalPolarity
-	InputJSON       string
-	ReferenceJSON   string
-	GradersJSON     string
-	FixtureRef      string
-	SourceEpisodeID string
-	CreatedAt       time.Time
+	ID              string       `json:"id"`
+	ProjectID       string       `json:"projectId"`
+	TaskType        string       `json:"taskType"`
+	Kind            EvalKind     `json:"kind"`
+	Polarity        EvalPolarity `json:"polarity"`
+	InputJSON       string       `json:"inputJson"`
+	ReferenceJSON   string       `json:"referenceJson"`
+	GradersJSON     string       `json:"gradersJson"`
+	FixtureRef      string       `json:"fixtureRef"`
+	SourceEpisodeID string       `json:"sourceEpisodeId"`
+	CreatedAt       time.Time    `json:"createdAt"`
 }
 
 // FlywheelEvalRun is one scoring of the suite (per cycle, per staged candidate,
 // and/or an ablation arm). MetricsJSON holds pass@k/pass^k/tokens/cost/latency.
 type FlywheelEvalRun struct {
-	ID             string
-	ProjectID      string
-	CycleID        string
-	MemoryVersion  string
-	StagedMemoryID string
-	Ablation       string // "", "memory_on", "memory_off"
-	MetricsJSON    string
-	PerCaseJSON    string
-	CreatedAt      time.Time
+	ID             string    `json:"id"`
+	ProjectID      string    `json:"projectId"`
+	CycleID        string    `json:"cycleId"`
+	MemoryVersion  string    `json:"memoryVersion"`
+	StagedMemoryID string    `json:"stagedMemoryId"`
+	Ablation       string    `json:"ablation"` // "", "memory_on", "memory_off"
+	MetricsJSON    string    `json:"metricsJson"`
+	PerCaseJSON    string    `json:"perCaseJson"`
+	CreatedAt      time.Time `json:"createdAt"`
 }
 
 // FlywheelConsolidationCycle is one slow-loop cycle: the audit record and the
 // dual-curve data point (net_delta vs the previous cycle).
 type FlywheelConsolidationCycle struct {
-	ID           string
-	ProjectID    string
-	EpisodesSeen int
-	Candidates   int
-	Promoted     int
-	Deprecated   int
-	Quarantined  int
-	EvalRunID    string
-	NetDeltaJSON string
-	CreatedAt    time.Time
+	ID           string    `json:"id"`
+	ProjectID    string    `json:"projectId"`
+	EpisodesSeen int       `json:"episodesSeen"`
+	Candidates   int       `json:"candidates"`
+	Promoted     int       `json:"promoted"`
+	Deprecated   int       `json:"deprecated"`
+	Quarantined  int       `json:"quarantined"`
+	EvalRunID    string    `json:"evalRunId"`
+	NetDeltaJSON string    `json:"netDeltaJson"`
+	CreatedAt    time.Time `json:"createdAt"`
 }

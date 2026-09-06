@@ -51,6 +51,7 @@ import (
 	browsersvc "github.com/aoagents/agent-orchestrator/backend/internal/service/browser"
 	chatsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/chat"
 	devimportsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/devimport"
+	"github.com/aoagents/agent-orchestrator/backend/internal/service/flywheel"
 	importsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/importer"
 	notificationsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/notification"
 	prsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/pr"
@@ -528,6 +529,7 @@ func Run() error {
 		Verifier: systeminstall.NewVerifier(agents, hostCommands),
 		Sessions: store,
 	})
+	flywheelSvc := flywheel.New(store)
 	if err := systemInstall.Recover(ctx); err != nil {
 		stop()
 		lcStack.Stop()
@@ -746,6 +748,7 @@ func Run() error {
 		CodexAccounts:      agentSvc,
 		SystemChecks:       systemChecks,
 		Installer:          systemInstall,
+		Flywheel:           flywheelSvc,
 		Sessions:           sessionSvc,
 		DesktopWorkspaces:  sessionSvc,
 		PRs:                prActions,

@@ -2152,6 +2152,74 @@ paths:
       summary: Replace a project's per-project config
       tags:
       - projects
+  /api/v1/projects/{projectId}/flywheel/demo:
+    post:
+      operationId: runFlywheelDemo
+      parameters:
+      - description: Project id the Flywheel data belongs to.
+        in: path
+        name: projectId
+        required: true
+        schema:
+          description: Project id the Flywheel data belongs to.
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlywheelOverview'
+          description: OK
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Implemented
+      summary: Run the Flywheel learning demo for a project and return the updated
+        dashboard
+      tags:
+      - flywheel
+  /api/v1/projects/{projectId}/flywheel/overview:
+    get:
+      operationId: getFlywheelOverview
+      parameters:
+      - description: Project id the Flywheel data belongs to.
+        in: path
+        name: projectId
+        required: true
+        schema:
+          description: Project id the Flywheel data belongs to.
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlywheelOverview'
+          description: OK
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Implemented
+      summary: Return the Flywheel learning dashboard (curve, memory, episodes) for
+        a project
+      tags:
+      - flywheel
   /api/v1/projects/clone:
     post:
       operationId: cloneProject
@@ -9021,6 +9089,261 @@ components:
       - ok
       - sessionId
       - session
+      type: object
+    FlywheelCyclePoint:
+      properties:
+        ablationAccuracy:
+          format: double
+          type: number
+        candidates:
+          type: integer
+        createdAt:
+          format: date-time
+          type: string
+        deprecated:
+          type: integer
+        episodesSeen:
+          type: integer
+        id:
+          type: string
+        metrics:
+          $ref: '#/components/schemas/FlywheelEvalMetrics'
+        promoted:
+          type: integer
+        quarantined:
+          type: integer
+      required:
+      - id
+      - createdAt
+      - episodesSeen
+      - candidates
+      - promoted
+      - deprecated
+      - quarantined
+      - metrics
+      - ablationAccuracy
+      type: object
+    FlywheelEpisode:
+      properties:
+        createdAt:
+          format: date-time
+          type: string
+        feedbackJson:
+          type: string
+        id:
+          type: string
+        inputJson:
+          type: string
+        outcomeJson:
+          type: string
+        projectId:
+          type: string
+        reflectedAt:
+          format: date-time
+          type:
+          - "null"
+          - string
+        retrievedJson:
+          type: string
+        sessionId:
+          type: string
+        taskType:
+          type: string
+        traceJson:
+          type: string
+      required:
+      - id
+      - projectId
+      - sessionId
+      - taskType
+      - inputJson
+      - retrievedJson
+      - traceJson
+      - outcomeJson
+      - feedbackJson
+      - createdAt
+      type: object
+    FlywheelEvalMetrics:
+      properties:
+        accuracy:
+          format: double
+          type: number
+        avgTokens:
+          format: double
+          type: number
+        avgToolCalls:
+          format: double
+          type: number
+        correct:
+          type: integer
+        "n":
+          type: integer
+        toolErrorRate:
+          format: double
+          type: number
+      required:
+      - "n"
+      - correct
+      - accuracy
+      - avgTokens
+      - avgToolCalls
+      - toolErrorRate
+      type: object
+    FlywheelEvalRun:
+      properties:
+        ablation:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        cycleId:
+          type: string
+        id:
+          type: string
+        memoryVersion:
+          type: string
+        metricsJson:
+          type: string
+        perCaseJson:
+          type: string
+        projectId:
+          type: string
+        stagedMemoryId:
+          type: string
+      required:
+      - id
+      - projectId
+      - cycleId
+      - memoryVersion
+      - stagedMemoryId
+      - ablation
+      - metricsJson
+      - perCaseJson
+      - createdAt
+      type: object
+    FlywheelMemoryEntry:
+      properties:
+        body:
+          type: string
+        confidence:
+          format: double
+          type: number
+        contradictionCount:
+          type: integer
+        createdAt:
+          format: date-time
+          type: string
+        evalRefsJson:
+          type: string
+        id:
+          type: string
+        kind:
+          type: string
+        lastConfirmedAt:
+          format: date-time
+          type:
+          - "null"
+          - string
+        lastUsedAt:
+          format: date-time
+          type:
+          - "null"
+          - string
+        projectId:
+          type: string
+        provenanceJson:
+          type: string
+        quarantineReason:
+          type: string
+        scopeTask:
+          type: string
+        scopeTool:
+          type: string
+        status:
+          type: string
+        structuredJson:
+          type: string
+        supportCount:
+          type: integer
+        title:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+        version:
+          type: integer
+      required:
+      - id
+      - projectId
+      - kind
+      - scopeTask
+      - scopeTool
+      - title
+      - body
+      - structuredJson
+      - confidence
+      - supportCount
+      - contradictionCount
+      - status
+      - version
+      - provenanceJson
+      - evalRefsJson
+      - quarantineReason
+      - createdAt
+      - updatedAt
+      type: object
+    FlywheelMemorySummary:
+      properties:
+        active:
+          type: integer
+        activeByKind:
+          additionalProperties:
+            type: integer
+          type:
+          - object
+          - "null"
+        candidate:
+          type: integer
+        deprecated:
+          type: integer
+        entries:
+          items:
+            $ref: '#/components/schemas/FlywheelMemoryEntry'
+          type: array
+        quarantined:
+          type: integer
+      required:
+      - active
+      - candidate
+      - deprecated
+      - quarantined
+      - activeByKind
+      - entries
+      type: object
+    FlywheelOverview:
+      properties:
+        cycles:
+          items:
+            $ref: '#/components/schemas/FlywheelCyclePoint'
+          type: array
+        memory:
+          $ref: '#/components/schemas/FlywheelMemorySummary'
+        projectId:
+          type: string
+        recentEpisodes:
+          items:
+            $ref: '#/components/schemas/FlywheelEpisode'
+          type: array
+        recentEvalRuns:
+          items:
+            $ref: '#/components/schemas/FlywheelEvalRun'
+          type: array
+      required:
+      - projectId
+      - cycles
+      - memory
+      - recentEpisodes
+      - recentEvalRuns
       type: object
     GitPreparationEvent:
       properties:
