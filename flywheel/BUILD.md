@@ -26,8 +26,8 @@ Toolchain: Go 1.26.5 (via `mise`), Node 26.
 
 | Phase | Scope | State |
 |---|---|---|
-| **A. Persistence + domain** | migration `0127_flywheel.sql`, `queries/flywheel.sql`, `domain/flywheel.go`, `store/flywheel_store.go` + tests | ⏳ in progress |
-| **B. Memory service** | `service/memory` — retrieve (ranked+budgeted), record, propose/promote/quarantine, decay; ports + tests | ☐ |
+| **A. Persistence + domain** | migration `0127_flywheel.sql`, `queries/flywheel.sql`, `domain/flywheel.go`, `store/flywheel_store.go` + tests | ✅ done |
+| **B. Memory service** | `service/flywheel/memory.go` — retrieve (ranked+budgeted), record, propose (merge/corroborate), promote/quarantine, decay; + tests | ✅ done |
 | **C. Learning loop** | mock env + tools, pluggable executor, deterministic reflector (+ optional LLM), eval harness + graders, eval-gated promotion | ☐ |
 | **D. API + CLI** | loopback controllers/DTOs, apispec reg (`npm run api`), thin `ao flywheel …` | ☐ |
 | **E. Learning tab** | renderer tab: dual curve, memory timeline, ablation (polling) | ☐ |
