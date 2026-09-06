@@ -34,6 +34,11 @@ type Store interface {
 	UpdateFlywheelMemoryStatus(ctx context.Context, id string, status domain.MemoryStatus, quarantineReason string, updatedAt time.Time) error
 	UpdateFlywheelMemoryStats(ctx context.Context, id string, confidence float64, supportCount, contradictionCount int, lastConfirmedAt *time.Time, updatedAt time.Time) error
 	MarkFlywheelMemoryUsed(ctx context.Context, id string, lastUsedAt time.Time) error
+
+	CreateFlywheelEvalCase(ctx context.Context, c domain.FlywheelEvalCase) (domain.FlywheelEvalCase, error)
+	ListFlywheelEvalCases(ctx context.Context, projectID string) ([]domain.FlywheelEvalCase, error)
+	CreateFlywheelEvalRun(ctx context.Context, r domain.FlywheelEvalRun) (domain.FlywheelEvalRun, error)
+	CreateFlywheelConsolidationCycle(ctx context.Context, c domain.FlywheelConsolidationCycle) (domain.FlywheelConsolidationCycle, error)
 }
 
 // Service is the memory service.
