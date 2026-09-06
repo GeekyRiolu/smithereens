@@ -38,7 +38,11 @@ type Store interface {
 	CreateFlywheelEvalCase(ctx context.Context, c domain.FlywheelEvalCase) (domain.FlywheelEvalCase, error)
 	ListFlywheelEvalCases(ctx context.Context, projectID string) ([]domain.FlywheelEvalCase, error)
 	CreateFlywheelEvalRun(ctx context.Context, r domain.FlywheelEvalRun) (domain.FlywheelEvalRun, error)
+	GetFlywheelEvalRun(ctx context.Context, id string) (domain.FlywheelEvalRun, bool, error)
+	ListFlywheelEvalRuns(ctx context.Context, projectID string, limit int) ([]domain.FlywheelEvalRun, error)
 	CreateFlywheelConsolidationCycle(ctx context.Context, c domain.FlywheelConsolidationCycle) (domain.FlywheelConsolidationCycle, error)
+	ListFlywheelConsolidationCycles(ctx context.Context, projectID string) ([]domain.FlywheelConsolidationCycle, error)
+	ListFlywheelEpisodes(ctx context.Context, projectID string, limit int) ([]domain.FlywheelEpisode, error)
 }
 
 // Service is the memory service.
