@@ -29,9 +29,16 @@ Toolchain: Go 1.26.5 (via `mise`), Node 26.
 | **A. Persistence + domain** | migration `0127_flywheel.sql`, `queries/flywheel.sql`, `domain/flywheel.go`, `store/flywheel_store.go` + tests | ✅ done |
 | **B. Memory service** | `service/flywheel/memory.go` — retrieve (ranked+budgeted), record, propose (merge/corroborate), promote/quarantine, decay; + tests | ✅ done |
 | **C. Learning loop** | executor/grader/reflector interfaces, eval harness, **eval-gated promotion**, cycles; simulated triage domain + `RunTriageDemo`; injection composer | ✅ done |
-| **D. API + CLI** | loopback controllers/DTOs exposing every record + a `consolidate/demo` trigger; thin `ao flywheel …` | ⏳ next |
-| **E. Learning tab** | renderer tab: dual curve, memory timeline, ablation, episode list (polling) | ☐ |
-| **F. Wiring + demo** | daemon wiring; executor = live AO session in the app (mock tools as local MCP) | ☐ |
+| **D. API** | loopback `GET .../flywheel/overview` + `POST .../flywheel/demo`; controller/apispec/daemon wiring; regenerated openapi.yaml + schema.ts | ✅ done |
+| **E. Learning tab** | renderer `LearningDashboard` (dual curve via inline SVG, memory timeline, ablation, cycles + episodes tables), `useFlywheelQuery` hook, `/projects/$projectId/learning` route, sidebar nav entry | ✅ done |
+| **F. Wiring + demo** | daemon wiring done (service injected); demo runs via the tab's "Run learning cycle" button. Remaining: executor = live AO session (mock tools as local MCP) | ⏳ live-session executor |
+
+### Frontend verified
+
+`npm run frontend:typecheck` → **0 errors** (with `frontend/` and `packages/product-ui/`
+deps installed via `npm install --ignore-scripts`). Open the tab at
+**Project → ⋯ → Learning** (or `/projects/<id>/learning`) and click **Run learning
+cycle** to populate + watch the curve climb.
 
 ### Proof (Phase C, `go test ./internal/service/flywheel -run TriageDemo -v`)
 

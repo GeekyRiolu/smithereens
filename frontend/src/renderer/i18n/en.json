@@ -1242,6 +1242,7 @@
 	"shell.unpinSession": "Unpin session",
 	"shell.projects": "Projects",
 	"shell.projectActions": "Project actions for {{name}}",
+	"shell.projectLearning": "Learning",
 	"shell.projectSettings": "Project settings",
 	"shell.restart": "Restart",
 	"shell.remove": "Remove",

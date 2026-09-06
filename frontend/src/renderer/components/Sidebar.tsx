@@ -23,6 +23,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import {
 	AlertTriangle,
+	Brain,
 	ChevronRight,
 	Download,
 	Folder,
@@ -363,6 +364,10 @@ function useSelection() {
 		(projectId: string) => void navigate({ to: "/projects/$projectId", params: { projectId } }),
 		[navigate],
 	);
+	const goLearning = useCallback(
+		(projectId: string) => void navigate({ to: "/projects/$projectId/learning", params: { projectId } }),
+		[navigate],
+	);
 	const goSession = useCallback(
 		(projectId: string, sessionId: string) =>
 			void navigate({
@@ -382,8 +387,9 @@ function useSelection() {
 		goConnectMobile,
 		goSettings,
 		goProject,
+		goLearning,
 		goSession,
-	}), [goConnectMobile, goGlobalSettings, goHome, goProject, goSession, goSettings, params.projectId, params.sessionId, pathname]);
+	}), [goConnectMobile, goGlobalSettings, goHome, goLearning, goProject, goSession, goSettings, params.projectId, params.sessionId, pathname]);
 }
 
 // Colour tracks the session's board section, preserving SCM state while the
@@ -1401,6 +1407,10 @@ const ProjectItemContent = memo(function ProjectItemContent({
 											{t("shell.newSession")}
 										</DropdownMenuItem>
 										<DropdownMenuSeparator />
+										<DropdownMenuItem onSelect={() => selection.goLearning(workspace.id)}>
+											<Brain aria-hidden="true" />
+											{t("shell.projectLearning")}
+										</DropdownMenuItem>
 										<DropdownMenuItem onSelect={() => selection.goSettings(workspace.id)}>
 											<Settings aria-hidden="true" />
 											{t("shell.projectSettings")}
@@ -1526,6 +1536,10 @@ const ProjectItemContent = memo(function ProjectItemContent({
 					{t("shell.newSession")}
 				</ContextMenuItem>
 				<ContextMenuSeparator />
+				<ContextMenuItem onSelect={() => selection.goLearning(workspace.id)}>
+					<Brain aria-hidden="true" />
+					{t("shell.projectLearning")}
+				</ContextMenuItem>
 				<ContextMenuItem onSelect={() => selection.goSettings(workspace.id)}>
 					<Settings aria-hidden="true" />
 					{t("shell.projectSettings")}
